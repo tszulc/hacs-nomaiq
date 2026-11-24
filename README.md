@@ -6,7 +6,7 @@ This integration exposes devices from the Noma IQ app through the Ayla cloud. Su
 
 - Garage door opener and its light
 - AY028MHA1 dehumidifier: power, humidity target and reading, mode, fan speed, tank and fault alerts
-- AY028MHU1 humidifier: power, Dim/Bright unit lights, water tank and filter alerts
+- AY028MHU1 humidifier: power, mist output and temperature, Dim/Bright unit lights, water tank and filter alerts
 - Smart plugs with writable outlet properties, including `plug-2`
 
 See the [AY028MHU1 property notes](docs/technical.md#ay028mhu1-humidifier) for settings still being mapped. To identify other devices, use the diagnostics download and [state capture service](docs/capturing-device-states.md).

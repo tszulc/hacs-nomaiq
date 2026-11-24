@@ -21,7 +21,7 @@ Noma IQ devices are cloud devices on the Ayla IoT platform. The integration sign
 | `cover.py` | Garage door (`oem_model` `gdo`) |
 | `light.py` | Light on a device that has `light_control` and `light_name` |
 | `humidifier.py` | AY028MHU1 humidifier and AY028MHA1 dehumidifier controls |
-| `select.py` | Dehumidifier fan speed and AY028MHU1 unit lights |
+| `select.py` | Dehumidifier fan speed, humidifier mist output and temperature, and unit lights |
 | `switch.py` | Writable boolean properties, including plug outlets |
 | `sensor.py` and `binary_sensor.py` | Humidity measurements and device alerts |
 | `device.py` and `entity.py` | Device identification, humidity steps, and current device access |
@@ -68,11 +68,13 @@ The device only accepts multiples of 5 for target humidity. Home Assistant's +/-
 | `night_mode` | Unit lights select. The app shows Bright for the captured `0` state, so the other boolean value is mapped to Dim. |
 | `water_runout` | Water tank empty alert |
 | `change_filter` | Replace filter alert. The state is unknown until the device reports a value. |
-| `mist_setting`, `vapour_setting`, `timer_setting` | Raw values are available in diagnostics. Labeled app captures are needed to map the writable options. |
+| `vapour_setting` | Mist output select. Low is `1`, Medium is `3`, and High is `7`. |
+| `mist_setting` | Mist temperature select. Cool is `1` and Warm is `2`. |
+| `timer_setting` | Raw values are available in diagnostics. Labeled captures are needed to map the timer options. |
 | `refill_timer`, `filter_replace` | Available in diagnostics. Both were unset in the startup captures. |
 | `version` | Firmware shown on the Home Assistant device page when reported. |
 
-The device reports mist settings and has no reported current or target humidity property. Capture one app setting at a time to map the remaining controls, including the options for mist level, mist temperature, timer, and any refill or filter reset action shown in the app.
+The device reports mist settings and has no reported current or target humidity property. Capture each timer option and any refill or filter reset action to map the remaining settings.
 
 ## Diagnostics and captured states
 

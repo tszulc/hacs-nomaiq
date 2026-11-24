@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
-from .device import is_humidifier, is_dehumidifier
+from .device import is_dehumidifier, is_humidifier
 from .entity import NomaIQPropertyEntity
 
 # App label -> raw value stored in the device's "fan_speed" property
@@ -25,6 +25,12 @@ FAN_TO_RAW: dict[str, str] = {
     "fast": "High",
 }
 RAW_TO_FAN: dict[str, str] = {raw: label for label, raw in FAN_TO_RAW.items()}
+
+HUMIDIFIER_SELECTS = (
+    ("night_mode", "boolean", "Unit lights", {"Dim": 1, "Bright": 0}),
+    ("vapour_setting", "integer", "Mist output", {"Low": 1, "Medium": 3, "High": 7}),
+    ("mist_setting", "integer", "Mist temperature", {"Cool": 1, "Warm": 2}),
+)
 
 
 async def async_setup_entry(
@@ -37,9 +43,12 @@ async def async_setup_entry(
 
     for device in coordinator.data:
         if is_humidifier(device):
-            lights = device.properties_full.get("night_mode", {})
-            if lights.get("base_type") == "boolean" and not lights.get("read_only", True):
-                async_add_entities([NomaIQHumidifierUnitLightsEntity(coordinator, device)])
+            for name, base_type, label, values in HUMIDIFIER_SELECTS:
+                prop = device.properties_full.get(name, {})
+                if prop.get("base_type") == base_type and not prop.get("read_only", True):
+                    async_add_entities([
+                        NomaIQHumidifierSelectEntity(coordinator, device, name, label, values)
+                    ])
         elif is_dehumidifier(device):
             async_add_entities(
                 [NomaIQDehumidifierFanSpeedEntity(coordinator, device)],
@@ -47,18 +56,20 @@ async def async_setup_entry(
             )
 
 
-class NomaIQHumidifierUnitLightsEntity(NomaIQPropertyEntity, SelectEntity):
-    """Dim or brighten the AY028MHU1 control panel lights."""
-
-    _values = {"Dim": 1, "Bright": 0}
-    _attr_options = list(_values)
+class NomaIQHumidifierSelectEntity(NomaIQPropertyEntity, SelectEntity):
+    """Select an app option backed by an Ayla property value."""
 
     def __init__(
         self,
         coordinator: NomaIQDataUpdateCoordinator,
         device: ayla_iot_unofficial.device.Device,
+        property_name: str,
+        label: str,
+        values: dict[str, int],
     ) -> None:
-        super().__init__(coordinator, device, "night_mode", "Unit lights")
+        super().__init__(coordinator, device, property_name, label)
+        self._values = values
+        self._attr_options = list(values)
 
     @property
     def current_option(self) -> str | None:
@@ -67,7 +78,7 @@ class NomaIQHumidifierUnitLightsEntity(NomaIQPropertyEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         if option not in self._values:
-            raise ServiceValidationError(f"Unsupported unit lights option: {option}")
+            raise ServiceValidationError(f"Unsupported {self.name} option: {option}")
         await self._async_set_value(self._values[option])
 
 
