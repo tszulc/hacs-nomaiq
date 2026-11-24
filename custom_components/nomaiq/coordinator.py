@@ -1,7 +1,7 @@
 """Coordinator for nomaiq."""
 
 from datetime import timedelta
-from typing import Set
+from typing import Any, Set
 
 import ayla_iot_unofficial
 
@@ -9,6 +9,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, NORMAL_UPDATE_INTERVAL, TRANSITION_UPDATE_INTERVAL
+
+
+def properties_snapshot(device: ayla_iot_unofficial.device.Device) -> dict[str, Any]:
+    """Return a JSON-safe copy of a device's property values and metadata."""
+    return {
+        name: {
+            "value": prop.get("value"),
+            "base_type": prop.get("base_type"),
+            "read_only": prop.get("read_only"),
+        }
+        for name, prop in device.properties_full.items()
+    }
 
 
 class NomaIQDataUpdateCoordinator(
@@ -27,6 +39,7 @@ class NomaIQDataUpdateCoordinator(
         self._api = api
         self._devices_in_transition: Set[str] = set()  # Track devices opening/closing
         self._last_full_update = 0  # Track when we last did a full update
+        self.snapshots: list[dict[str, Any]] = []  # Captured states, kept until restart
 
         super().__init__(
             hass,
@@ -67,6 +80,13 @@ class NomaIQDataUpdateCoordinator(
         """Check if a device is currently in transition state."""
         return device_serial in self._devices_in_transition
 
+    def device(self, serial: str) -> ayla_iot_unofficial.device.Device | None:
+        """Return the latest object for a device, including after a poll replaces it."""
+        return next(
+            (device for device in self.data or [] if device.serial_number == serial),
+            None,
+        )
+
     async def _async_update_data(self) -> list[ayla_iot_unofficial.device.Device]:
         """Fetch data."""
         try:
@@ -99,6 +119,7 @@ class NomaIQDataUpdateCoordinator(
                     "Performing transition update for %d devices",
                     len(self._devices_in_transition),
                 )
+                previous = {device.serial_number: device for device in self.data or []}
                 for device in devices:
                     if device.serial_number in self._devices_in_transition:
                         await device.async_update()
@@ -113,6 +134,8 @@ class NomaIQDataUpdateCoordinator(
                                 device.serial_number,
                                 door_status,
                             )
+                    elif old := previous.get(device.serial_number):
+                        device.properties_full = old.properties_full
 
         except Exception as ex:
             raise UpdateFailed(f"Exception on getting states: {ex}") from ex

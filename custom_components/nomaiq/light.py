@@ -68,11 +68,13 @@ class NomaIQLightEntity(LightEntity):
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn device on."""
-        await self._device.async_set_property_value("light_control", 1)
+        device = self.coordinator.device(self._device.serial_number)
+        await device.async_set_property_value("light_control", 1)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn device off."""
-        await self._device.async_set_property_value("light_control", 0)
+        device = self.coordinator.device(self._device.serial_number)
+        await device.async_set_property_value("light_control", 0)
 
     async def async_update(self) -> None:
         """Update the light state."""

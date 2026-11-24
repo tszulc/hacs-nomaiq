@@ -106,7 +106,7 @@ class NomaIQGarageDoorOpenerEntity(CoverEntity):
 
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the door."""
-        await self._device.async_set_property_value(
+        await self._get_current_device().async_set_property_value(
             "door_toggle", str(int(time.time()))
         )
         # Notify coordinator that device is entering transition state
@@ -114,7 +114,7 @@ class NomaIQGarageDoorOpenerEntity(CoverEntity):
 
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the door."""
-        await self._device.async_set_property_value(
+        await self._get_current_device().async_set_property_value(
             "door_toggle", str(int(time.time()))
         )
         # Notify coordinator that device is entering transition state
@@ -122,7 +122,7 @@ class NomaIQGarageDoorOpenerEntity(CoverEntity):
 
     async def async_stop_cover(self, **kwargs: Any) -> None:
         """Stop the door."""
-        await self._device.async_set_property_value(
+        await self._get_current_device().async_set_property_value(
             "door_toggle", str(int(time.time()))
         )
         # Notify coordinator that device is entering transition state
