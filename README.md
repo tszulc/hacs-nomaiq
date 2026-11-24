@@ -2,10 +2,13 @@
 
 ## About
 
-This integration exposes devices from the Noma IQ app. For now, only the current devices have been tested:
+This integration exposes devices from the Noma IQ app through the Ayla cloud. Supported devices include:
 
-- Garage Door Opener
-- Garage Door Opener's Light
+- Garage door opener and its light
+- AY028MHA1 dehumidifier: power, humidity target and reading, mode, fan speed, tank and fault alerts
+- Smart plugs with writable outlet properties, including `plug-2`
+
+The AY028MHU1 humidifier is planned for this branch; its controls are not implemented yet. Other devices can be identified through the diagnostics download and state capture service described in [capturing device states](docs/capturing-device-states.md).
 
 ## Installation
 
