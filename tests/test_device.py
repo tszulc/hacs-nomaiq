@@ -18,11 +18,26 @@ class DeviceRulesTest(unittest.TestCase):
             ("AY028MHA1", None, True),
             (None, "dehum", True),
             ("AY028MHU1", "humid", False),
+            ("AY028MHU1", "dehum", False),
             ("other", "other", False),
         ]:
             with self.subTest(model=model, oem=oem):
                 self.assertEqual(
                     rules.is_dehumidifier(
+                        SimpleNamespace(device_model_number=model, oem_model_number=oem)
+                    ),
+                    expected,
+                )
+
+    def test_humidifier_matches_the_model_without_relying_on_oem(self):
+        for model, oem, expected in [
+            ("AY028MHU1", None, True),
+            ("AY028MHA1", "humid", False),
+            ("future_humidifier", "humid", False),
+        ]:
+            with self.subTest(model=model, oem=oem):
+                self.assertEqual(
+                    rules.is_humidifier(
                         SimpleNamespace(device_model_number=model, oem_model_number=oem)
                     ),
                     expected,

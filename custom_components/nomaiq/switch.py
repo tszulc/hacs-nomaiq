@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
+from .device import is_humidifier
 
 _OPTIMISTIC_TIMEOUT = 30.0
 
@@ -35,6 +36,9 @@ def _is_switch_property(
     property_data: dict[str, Any],
 ) -> bool:
     """Return True when an Ayla property should be exposed as a switch."""
+    if is_humidifier(device):
+        return False
+
     if device.oem_model_number == "plug-2":
         return (
             _is_outlet_property(property_name)

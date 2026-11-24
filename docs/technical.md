@@ -20,10 +20,10 @@ Noma IQ devices are cloud devices on the Ayla IoT platform. The integration sign
 | `coordinator.py` | Polls devices, tracks devices in transition, and holds captured states |
 | `cover.py` | Garage door (`oem_model` `gdo`) |
 | `light.py` | Light on a device that has `light_control` and `light_name` |
-| `humidifier.py` | Dehumidifier (`oem_model` `dehum`): power, target humidity, current humidity, mode |
-| `select.py` | Dehumidifier fan speed |
+| `humidifier.py` | AY028MHU1 humidifier and AY028MHA1 dehumidifier controls |
+| `select.py` | Dehumidifier fan speed and AY028MHU1 unit lights |
 | `switch.py` | Writable boolean properties, including plug outlets |
-| `sensor.py` and `binary_sensor.py` | Dehumidifier humidity and alerts |
+| `sensor.py` and `binary_sensor.py` | Humidity measurements and device alerts |
 | `device.py` and `entity.py` | Device identification, humidity steps, and current device access |
 | `diagnostics.py` | Diagnostics download |
 | `services.yaml` | Describes the `capture_state` service in the Home Assistant UI |
@@ -35,10 +35,10 @@ On setup, each device returned by the cloud is checked against the platforms:
 - `gdo` becomes a garage door cover.
 - A device with `light_control` and `light_name` properties becomes a light.
 - `dehum` or model `AY028MHA1` becomes a dehumidifier and fan speed select, with sensors for properties the device exposes.
-- Writable boolean properties become switches; `plug-2` only exposes numbered outlets.
+- `AY028MHU1` uses the exact device model number and has its own controls and alerts.
+- Other writable boolean properties can become switches. `plug-2` only exposes numbered outlets.
 
 Devices that match none of these are ignored. Their properties still appear in the diagnostics download.
-The `AY028MHU1` humidifier needs its own property mapping before support can be added.
 
 ## Dehumidifier
 
@@ -59,6 +59,20 @@ The device only accepts multiples of 5 for target humidity. Home Assistant's +/-
 **Not verified:** writing `mode` and `fan_speed` through the cloud. The mappings above come from changes made in the app, not from the integration.
 
 **Unknown:** whether `humidity` takes effect in every mode.
+
+## AY028MHU1 humidifier
+
+| Ayla property | Home Assistant behavior |
+|---|---|
+| `power_switch` | Humidifier power |
+| `night_mode` | Unit lights select. The app shows Bright for the captured `0` state, so the other boolean value is mapped to Dim. |
+| `water_runout` | Water tank empty alert |
+| `change_filter` | Replace filter alert. The state is unknown until the device reports a value. |
+| `mist_setting`, `vapour_setting`, `timer_setting` | Raw values are available in diagnostics. Labeled app captures are needed to map the writable options. |
+| `refill_timer`, `filter_replace` | Available in diagnostics. Both were unset in the startup captures. |
+| `version` | Firmware shown on the Home Assistant device page when reported. |
+
+The device reports mist settings and has no reported current or target humidity property. Capture one app setting at a time to map the remaining controls, including the options for mist level, mist temperature, timer, and any refill or filter reset action shown in the app.
 
 ## Diagnostics and captured states
 

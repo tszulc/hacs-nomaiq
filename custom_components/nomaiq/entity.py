@@ -6,6 +6,7 @@ from typing import Any
 
 import ayla_iot_unofficial.device
 
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -23,7 +24,7 @@ class NomaIQPropertyEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
         coordinator: NomaIQDataUpdateCoordinator,
         device: ayla_iot_unofficial.device.Device,
         property_name: str,
-        label: str,
+        label: str | None,
     ) -> None:
         super().__init__(coordinator)
         self._serial = device.serial_number
@@ -42,4 +43,15 @@ class NomaIQPropertyEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
 
     def _value(self) -> Any:
         device = self.coordinator.device(self._serial)
-        return device.get_property_value(self._property_name) if device else None
+        if device is None or self._property_name not in device.properties_full:
+            return None
+        return device.get_property_value(self._property_name)
+
+    async def _async_set_value(self, value: int) -> None:
+        device = self.coordinator.device(self._serial)
+        if device is None or device.properties_full.get(self._property_name, {}).get(
+            "read_only", True
+        ):
+            raise ServiceValidationError(f"Device property {self._property_name} is not writable")
+        await device.async_set_property_value(self._property_name, value)
+        await self.coordinator.async_request_refresh()

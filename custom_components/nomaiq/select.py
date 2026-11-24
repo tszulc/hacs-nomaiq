@@ -1,4 +1,4 @@
-"""Platform for dehumidifier fan speed select."""
+"""Select controls for supported Noma IQ devices."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import ayla_iot_unofficial.device
 
 from homeassistant.components.select import SelectEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -14,7 +15,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
-from .device import is_dehumidifier
+from .device import is_humidifier, is_dehumidifier
+from .entity import NomaIQPropertyEntity
 
 # App label -> raw value stored in the device's "fan_speed" property
 FAN_TO_RAW: dict[str, str] = {
@@ -30,15 +32,43 @@ async def async_setup_entry(
     entry: NomaIQConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the Noma IQ dehumidifier fan speed select."""
+    """Set up select controls based on device model."""
     coordinator: NomaIQDataUpdateCoordinator = entry.runtime_data
 
     for device in coordinator.data:
-        if is_dehumidifier(device):
+        if is_humidifier(device):
+            lights = device.properties_full.get("night_mode", {})
+            if lights.get("base_type") == "boolean" and not lights.get("read_only", True):
+                async_add_entities([NomaIQHumidifierUnitLightsEntity(coordinator, device)])
+        elif is_dehumidifier(device):
             async_add_entities(
                 [NomaIQDehumidifierFanSpeedEntity(coordinator, device)],
                 update_before_add=False,
             )
+
+
+class NomaIQHumidifierUnitLightsEntity(NomaIQPropertyEntity, SelectEntity):
+    """Dim or brighten the AY028MHU1 control panel lights."""
+
+    _values = {"Dim": 1, "Bright": 0}
+    _attr_options = list(_values)
+
+    def __init__(
+        self,
+        coordinator: NomaIQDataUpdateCoordinator,
+        device: ayla_iot_unofficial.device.Device,
+    ) -> None:
+        super().__init__(coordinator, device, "night_mode", "Unit lights")
+
+    @property
+    def current_option(self) -> str | None:
+        value = self._value()
+        return next((option for option, raw in self._values.items() if raw == value), None)
+
+    async def async_select_option(self, option: str) -> None:
+        if option not in self._values:
+            raise ServiceValidationError(f"Unsupported unit lights option: {option}")
+        await self._async_set_value(self._values[option])
 
 
 class NomaIQDehumidifierFanSpeedEntity(

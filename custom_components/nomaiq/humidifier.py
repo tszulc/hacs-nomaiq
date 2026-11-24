@@ -1,4 +1,4 @@
-"""Platform for dehumidifier integration."""
+"""Platform for humidifiers and dehumidifiers."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from homeassistant.components.humidifier import (
     HumidifierEntityFeature,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -20,7 +21,14 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
-from .device import MAX_HUMIDITY, MIN_HUMIDITY, is_dehumidifier, stepped_humidity
+from .device import (
+    MAX_HUMIDITY,
+    MIN_HUMIDITY,
+    is_humidifier,
+    is_dehumidifier,
+    stepped_humidity,
+)
+from .entity import NomaIQPropertyEntity
 
 # App label -> raw value stored in the device's "mode" property
 MODE_TO_RAW: dict[str, str] = {
@@ -36,15 +44,49 @@ async def async_setup_entry(
     entry: NomaIQConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the Noma IQ dehumidifier platform."""
+    """Set up the humidity control entity for each supported model."""
     coordinator: NomaIQDataUpdateCoordinator = entry.runtime_data
 
     for device in coordinator.data:
-        if is_dehumidifier(device):
+        if is_humidifier(device):
+            power = device.properties_full.get("power_switch", {})
+            if power.get("base_type") == "boolean" and not power.get("read_only", True):
+                async_add_entities([NomaIQHumidifierEntity(coordinator, device)])
+        elif is_dehumidifier(device):
             async_add_entities(
                 [NomaIQDehumidifierEntity(coordinator, device)],
                 update_before_add=False,
             )
+
+
+class NomaIQHumidifierEntity(NomaIQPropertyEntity, HumidifierEntity):
+    """Power control for the AY028MHU1 mist humidifier."""
+
+    _attr_device_class = HumidifierDeviceClass.HUMIDIFIER
+
+    def __init__(
+        self,
+        coordinator: NomaIQDataUpdateCoordinator,
+        device: ayla_iot_unofficial.device.Device,
+    ) -> None:
+        super().__init__(coordinator, device, "power_switch", None)
+        version = device.properties_full.get("version", {}).get("value")
+        if isinstance(version, str) and version:
+            self._attr_device_info["sw_version"] = version
+
+    @property
+    def is_on(self) -> bool | None:
+        value = self._value()
+        return None if value is None else bool(value)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._async_set_value(1)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._async_set_value(0)
+
+    async def async_set_humidity(self, humidity: int) -> None:
+        raise ServiceValidationError("The AY028MHU1 has no target humidity setting")
 
 
 class NomaIQDehumidifierEntity(
