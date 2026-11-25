@@ -32,3 +32,6 @@ MANIFEST
 venv/
 .venv/
 ENV/
+
+# Local Codex configuration
+/.codex/
