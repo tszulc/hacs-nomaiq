@@ -16,7 +16,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import NomaIQConfigEntry
 from .const import DOMAIN
@@ -28,7 +27,7 @@ from .device import (
     is_dehumidifier,
     stepped_humidity,
 )
-from .entity import NomaIQPropertyEntity
+from .entity import NomaIQEntity, NomaIQPropertyEntity
 
 # App label -> raw value stored in the device's "mode" property
 MODE_TO_RAW: dict[str, str] = {
@@ -89,9 +88,7 @@ class NomaIQHumidifierEntity(NomaIQPropertyEntity, HumidifierEntity):
         raise ServiceValidationError("The AY028MHU1 has no target humidity setting")
 
 
-class NomaIQDehumidifierEntity(
-    CoordinatorEntity[NomaIQDataUpdateCoordinator], HumidifierEntity
-):
+class NomaIQDehumidifierEntity(NomaIQEntity, HumidifierEntity):
     """Representation of a NomaIQ dehumidifier."""
 
     _attr_device_class = HumidifierDeviceClass.DEHUMIDIFIER
@@ -108,7 +105,7 @@ class NomaIQDehumidifierEntity(
         device: ayla_iot_unofficial.device.Device,
     ) -> None:
         """Initialize a NomaIQ dehumidifier."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device)
         self._device = device
         self._attr_unique_id = f"nomaiq_dehumidifier_{device.serial_number}"
         self._attr_device_info = DeviceInfo(

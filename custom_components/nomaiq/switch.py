@@ -13,11 +13,11 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
+from .entity import NomaIQEntity
 from .device import is_humidifier
 
 _OPTIMISTIC_TIMEOUT = 30.0
@@ -86,9 +86,7 @@ async def async_setup_entry(
         async_add_entities(entities, update_before_add=False)
 
 
-class NomaIQSwitchEntity(
-    CoordinatorEntity[NomaIQDataUpdateCoordinator], SwitchEntity
-):
+class NomaIQSwitchEntity(NomaIQEntity, SwitchEntity):
     """Representation of a writable boolean Ayla property as a switch."""
 
     def __init__(
@@ -99,7 +97,7 @@ class NomaIQSwitchEntity(
         property_data: dict[str, Any],
     ) -> None:
         """Initialize the switch entity."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device)
         self._device = device
         self._property_name = property_name
         self._is_outlet_property = _is_outlet_property(property_name)

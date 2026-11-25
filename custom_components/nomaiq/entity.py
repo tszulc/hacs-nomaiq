@@ -14,7 +14,23 @@ from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
 
 
-class NomaIQPropertyEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
+class NomaIQEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
+    """An entity whose availability follows the device's cloud connection."""
+
+    def __init__(
+        self,
+        coordinator: NomaIQDataUpdateCoordinator,
+        device: ayla_iot_unofficial.device.Device,
+    ) -> None:
+        super().__init__(coordinator)
+        self._serial = device.serial_number
+
+    @property
+    def available(self) -> bool:
+        return super().available and self.coordinator.is_device_available(self._serial)
+
+
+class NomaIQPropertyEntity(NomaIQEntity):
     """A device property that survives replacement objects during polling."""
 
     _attr_has_entity_name = True
@@ -26,8 +42,7 @@ class NomaIQPropertyEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
         property_name: str,
         label: str | None,
     ) -> None:
-        super().__init__(coordinator)
-        self._serial = device.serial_number
+        super().__init__(coordinator, device)
         self._property_name = property_name
         self._attr_name = label
         self._attr_unique_id = f"nomaiq_{property_name}_{self._serial}"
@@ -36,10 +51,6 @@ class NomaIQPropertyEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
             name=device.name,
             model=device.device_model_number,
         )
-
-    @property
-    def available(self) -> bool:
-        return super().available and self.coordinator.device(self._serial) is not None
 
     def _value(self) -> Any:
         device = self.coordinator.device(self._serial)

@@ -25,6 +25,7 @@ async def async_get_config_entry_diagnostics(
                 "name": device.name,
                 "oem_model": device.oem_model_number,
                 "model_number": device.device_model_number,
+                **coordinator.connection_info.get(device.serial_number, {}),
                 "properties": properties_snapshot(device),
             }
             for device in coordinator.data
