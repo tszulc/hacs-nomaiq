@@ -14,11 +14,9 @@ from homeassistant.components.cover import (
     CoverEntityFeature,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NomaIQConfigEntry
-from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
 from .entity import NomaIQEntity
 
@@ -57,10 +55,6 @@ class NomaIQGarageDoorOpenerEntity(NomaIQEntity, CoverEntity):
         )
         self._attr_name = device.name
         self._attr_unique_id = f"nomaiq_cover_{device.serial_number}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device.serial_number)},
-            name=device.name,
-        )
 
     def _get_current_device(self) -> ayla_iot_unofficial.device.Device | None:
         """Get the current device from coordinator data."""

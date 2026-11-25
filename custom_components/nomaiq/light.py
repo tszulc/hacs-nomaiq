@@ -9,11 +9,9 @@ import ayla_iot_unofficial.device
 
 from homeassistant.components.light import ColorMode, LightEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NomaIQConfigEntry
-from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
 from .entity import NomaIQEntity
 
@@ -52,10 +50,6 @@ class NomaIQLightEntity(NomaIQEntity, LightEntity):
         self._attr_name = device.get_property_value("light_name") or device.name
         self._attr_unique_id = f"nomaiq_light_{device.serial_number}"
         self._attr_has_entity_name = device.get_property_value("light_name")
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device.serial_number)},
-            name=device.name,
-        )
 
     @property
     def is_on(self) -> bool | None:
