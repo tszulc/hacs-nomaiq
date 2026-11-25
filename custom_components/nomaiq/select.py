@@ -10,13 +10,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
 from .device import is_dehumidifier, is_humidifier
-from .entity import NomaIQPropertyEntity
+from .entity import NomaIQEntity, NomaIQPropertyEntity
 
 # App label -> raw value stored in the device's "fan_speed" property
 FAN_TO_RAW: dict[str, str] = {
@@ -82,9 +81,7 @@ class NomaIQHumidifierSelectEntity(NomaIQPropertyEntity, SelectEntity):
         await self._async_set_value(self._values[option])
 
 
-class NomaIQDehumidifierFanSpeedEntity(
-    CoordinatorEntity[NomaIQDataUpdateCoordinator], SelectEntity
-):
+class NomaIQDehumidifierFanSpeedEntity(NomaIQEntity, SelectEntity):
     """Fan speed control for a NomaIQ dehumidifier."""
 
     _attr_has_entity_name = True
@@ -97,7 +94,7 @@ class NomaIQDehumidifierFanSpeedEntity(
         device: ayla_iot_unofficial.device.Device,
     ) -> None:
         """Initialize the fan speed select."""
-        super().__init__(coordinator)
+        super().__init__(coordinator, device)
         self._device = device
         self._attr_unique_id = f"nomaiq_dehumidifier_fan_{device.serial_number}"
         self._attr_device_info = DeviceInfo(

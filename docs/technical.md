@@ -11,6 +11,8 @@ Noma IQ devices are cloud devices on the Ayla IoT platform. The integration sign
 - **Config flow:** asks for username and password, checks them by signing in, and stores them in the config entry. Reauthentication uses the same form.
 - **Polling:** the coordinator (`coordinator.py`) refreshes every 30 seconds. While a cover is opening or closing, it speeds up to every 2 seconds until the door reaches a stable state.
 
+The coordinator retains `connection_status` and `connected_at` from the raw device list. All entities become unavailable when Ayla explicitly reports `offline` (case insensitive), when the device disappears, or when polling fails. A missing connection status preserves the existing availability behavior. An online device with power switched off remains available. `connected_at` is a connection timestamp, not a heartbeat; these fields are also included in diagnostics.
+
 ## Files
 
 | File | Purpose |

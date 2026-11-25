@@ -40,6 +40,7 @@ class NomaIQDataUpdateCoordinator(
         self._devices_in_transition: Set[str] = set()  # Track devices opening/closing
         self._last_full_update = 0  # Track when we last did a full update
         self.snapshots: list[dict[str, Any]] = []  # Captured states, kept until restart
+        self.connection_info: dict[str, dict[str, Any]] = {}
 
         super().__init__(
             hass,
@@ -87,6 +88,13 @@ class NomaIQDataUpdateCoordinator(
             None,
         )
 
+    def is_device_available(self, serial: str) -> bool:
+        """Treat an explicit offline status as unavailable, even with cached values."""
+        status = self.connection_info.get(serial, {}).get("connection_status")
+        return self.device(serial) is not None and (
+            not isinstance(status, str) or status.casefold() != "offline"
+        )
+
     async def _async_update_data(self) -> list[ayla_iot_unofficial.device.Device]:
         """Fetch data."""
         try:
@@ -98,7 +106,13 @@ class NomaIQDataUpdateCoordinator(
                 self.logger.error("Failed to refresh auth: %s", ex)
                 raise UpdateFailed("Failed to refresh auth") from ex
 
-            devices = await self._api.async_get_devices()
+            # The library's async_get_devices() discards connection metadata.
+            # Noma IQ platforms use generic property-based devices.
+            raw_devices = await self._api.async_list_devices()
+            devices = [
+                ayla_iot_unofficial.device.Device(self._api, raw, europe=self._api.europe)
+                for raw in raw_devices
+            ]
             current_time = self.hass.loop.time()
 
             # Determine if this should be a full update or transition-only update
@@ -140,4 +154,11 @@ class NomaIQDataUpdateCoordinator(
         except Exception as ex:
             raise UpdateFailed(f"Exception on getting states: {ex}") from ex
         else:
+            self.connection_info = {
+                raw["dsn"]: {
+                    "connection_status": raw.get("connection_status"),
+                    "connected_at": raw.get("connected_at"),
+                }
+                for raw in raw_devices
+            }
             return devices

@@ -15,6 +15,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from . import NomaIQConfigEntry
 from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
+from .entity import NomaIQEntity
 
 
 async def async_setup_entry(
@@ -35,7 +36,7 @@ async def async_setup_entry(
             )
 
 
-class NomaIQLightEntity(LightEntity):
+class NomaIQLightEntity(NomaIQEntity, LightEntity):
     """Representation of a NomaIQ Light."""
 
     def __init__(
@@ -44,7 +45,7 @@ class NomaIQLightEntity(LightEntity):
         device: ayla_iot_unofficial.device.Device,
     ) -> None:
         """Initialize a NomaIQ light."""
-        self.coordinator = coordinator
+        super().__init__(coordinator, device)
         self._device = device
         self._attr_supported_color_modes = {ColorMode.ONOFF}
         self._attr_color_mode = ColorMode.ONOFF
