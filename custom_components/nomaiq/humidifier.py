@@ -14,11 +14,9 @@ from homeassistant.components.humidifier import (
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import NomaIQConfigEntry
-from .const import DOMAIN
 from .coordinator import NomaIQDataUpdateCoordinator
 from .device import (
     MAX_HUMIDITY,
@@ -69,9 +67,6 @@ class NomaIQHumidifierEntity(NomaIQPropertyEntity, HumidifierEntity):
         device: ayla_iot_unofficial.device.Device,
     ) -> None:
         super().__init__(coordinator, device, "power_switch", None)
-        version = device.properties_full.get("version", {}).get("value")
-        if isinstance(version, str) and version:
-            self._attr_device_info["sw_version"] = version
 
     @property
     def is_on(self) -> bool | None:
@@ -108,11 +103,6 @@ class NomaIQDehumidifierEntity(NomaIQEntity, HumidifierEntity):
         super().__init__(coordinator, device)
         self._device = device
         self._attr_unique_id = f"nomaiq_dehumidifier_{device.serial_number}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device.serial_number)},
-            name=device.name,
-            model=device.device_model_number,
-        )
 
     def _get_current_device(self) -> ayla_iot_unofficial.device.Device | None:
         """Get the current device from coordinator data."""

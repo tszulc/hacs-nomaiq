@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import ayla_iot_unofficial.device
 
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo, format_mac
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
@@ -24,6 +25,23 @@ class NomaIQEntity(CoordinatorEntity[NomaIQDataUpdateCoordinator]):
     ) -> None:
         super().__init__(coordinator)
         self._serial = device.serial_number
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, self._serial)},
+            serial_number=self._serial,
+            name=device.name,
+            model=device.device_model_number,
+        )
+        # Ayla 1.5.0 only exposes the MAC through private Device attributes.
+        mac = coordinator.mac_addresses.get(self._serial)
+        if isinstance(mac, str):
+            mac = format_mac(mac)
+            if re.fullmatch(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}", mac) and mac not in (
+                "00:00:00:00:00:00", "ff:ff:ff:ff:ff:ff"
+            ):
+                self._attr_device_info["connections"] = {(CONNECTION_NETWORK_MAC, mac)}
+        version = device.properties_full.get("version", {}).get("value")
+        if isinstance(version, str) and version:
+            self._attr_device_info["sw_version"] = version
 
     @property
     def available(self) -> bool:
@@ -46,11 +64,6 @@ class NomaIQPropertyEntity(NomaIQEntity):
         self._property_name = property_name
         self._attr_name = label
         self._attr_unique_id = f"nomaiq_{property_name}_{self._serial}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self._serial)},
-            name=device.name,
-            model=device.device_model_number,
-        )
 
     def _value(self) -> Any:
         device = self.coordinator.device(self._serial)

@@ -41,6 +41,7 @@ class NomaIQDataUpdateCoordinator(
         self._last_full_update = 0  # Track when we last did a full update
         self.snapshots: list[dict[str, Any]] = []  # Captured states, kept until restart
         self.connection_info: dict[str, dict[str, Any]] = {}
+        self.mac_addresses: dict[str, str | None] = {}
 
         super().__init__(
             hass,
@@ -154,6 +155,7 @@ class NomaIQDataUpdateCoordinator(
         except Exception as ex:
             raise UpdateFailed(f"Exception on getting states: {ex}") from ex
         else:
+            self.mac_addresses = {raw["dsn"]: raw.get("mac") for raw in raw_devices}
             self.connection_info = {
                 raw["dsn"]: {
                     "connection_status": raw.get("connection_status"),

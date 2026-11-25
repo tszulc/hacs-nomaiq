@@ -68,7 +68,11 @@ def load_modules():
         "ayla_iot_unofficial.device": ayla.device,
         "homeassistant.core": SimpleNamespace(HomeAssistant=object),
         "homeassistant.exceptions": SimpleNamespace(ServiceValidationError=ValueError),
-        "homeassistant.helpers.device_registry": SimpleNamespace(DeviceInfo=dict),
+        "homeassistant.helpers.device_registry": SimpleNamespace(
+            DeviceInfo=dict, CONNECTION_NETWORK_MAC="mac",
+            format_mac=lambda mac: ":".join(mac[i:i + 2] for i in range(0, 12, 2)).lower()
+            if len(mac) == 12 else mac.replace("-", ":").lower(),
+        ),
         "homeassistant.helpers.update_coordinator": SimpleNamespace(
             DataUpdateCoordinator=Coordinator,
             CoordinatorEntity=CoordinatorEntity,
@@ -121,6 +125,37 @@ class AvailabilityTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.entity("bedroom").available)
         self.api.async_list_devices.assert_awaited_once()
 
+    async def test_device_registry_has_mac_and_descriptive_metadata(self):
+        self.raw[0]["mac"] = "AABBCCDDEEFF"
+        await self.refresh()
+        device = self.coordinator.device("living")
+        device.properties_full["version"] = {"value": "1.2.3"}
+        info = self.entity("living")._attr_device_info
+        self.assertEqual(info["identifiers"], {("nomaiq", "living")})
+        self.assertEqual(info["connections"], {("mac", "aa:bb:cc:dd:ee:ff")})
+        self.assertEqual(info["serial_number"], "living")
+        self.assertEqual(info["model"], "AY028MHU1")
+        self.assertEqual(info["sw_version"], "1.2.3")
+        self.assertEqual(info, entity_module.NomaIQEntity(
+            self.coordinator, device
+        )._attr_device_info)
+
+    async def test_missing_or_invalid_mac_does_not_register_a_connection(self):
+        for mac in (None, "", "invalid", "00:00:00:00:00:00", "ff:ff:ff:ff:ff:ff", 123):
+            with self.subTest(mac=mac):
+                self.raw[0]["mac"] = mac
+                await self.refresh()
+                self.assertNotIn("connections", self.entity("living")._attr_device_info)
+
+    async def test_mac_formats_and_replacement_devices(self):
+        for mac in ("AABBCCDDEEFF", "AA:BB:CC:DD:EE:FF", "AA-BB-CC-DD-EE-FF"):
+            with self.subTest(mac=mac):
+                self.raw[0]["mac"] = mac
+                await self.refresh()
+                self.assertEqual(self.entity("living")._attr_device_info["connections"],
+                                 {("mac", "aa:bb:cc:dd:ee:ff")})
+
+
     async def test_existing_entity_recovers_and_follows_replacement_objects(self):
         await self.refresh()
         entity = self.entity("living")
@@ -152,6 +187,7 @@ class AvailabilityTest(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.entity("living").available)
 
     async def test_diagnostics_include_connection_fields_without_serials(self):
+        self.raw[0]["mac"] = "AABBCCDDEEFF"
         await self.refresh()
         result = await diagnostics.async_get_config_entry_diagnostics(
             None, SimpleNamespace(runtime_data=self.coordinator)
@@ -161,16 +197,21 @@ class AvailabilityTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(living["connected_at"], "2026-11-20T10:00:00Z")
         self.assertNotIn("dsn", living)
         self.assertNotIn("serial_number", living)
+        self.assertNotIn("mac", living)
+        self.assertNotIn("AABBCCDDEEFF", str(result))
 
     async def test_failed_poll_does_not_publish_partial_connection_info(self):
+        self.raw[0]["mac"] = "AABBCCDDEEFF"
         await self.refresh()
         self.raw[0]["connection_status"] = "Online"
+        self.raw[0]["mac"] = "112233445566"
         self.api.async_list_devices.side_effect = OSError("Cloud unavailable")
         with self.assertRaisesRegex(RuntimeError, "Cloud unavailable"):
             await self.refresh()
         self.assertEqual(
             self.coordinator.connection_info["living"]["connection_status"], "Offline"
         )
+        self.assertEqual(self.coordinator.mac_addresses["living"], "AABBCCDDEEFF")
 
 
 if __name__ == "__main__":

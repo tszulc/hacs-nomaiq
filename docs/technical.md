@@ -32,6 +32,23 @@ The coordinator retains `connection_status` and `connected_at` from the raw devi
 
 ## How devices are matched
 
+All platforms register the same Ayla DSN identifier and expose it as the device
+serial number, together with the model and the `version` property when available.
+The coordinator also retains `mac` from the existing Ayla device-list response;
+the pinned library stores it privately rather than exposing a public property.
+Valid MAC addresses are normalized and registered as Home Assistant network MAC
+connections. Missing, malformed, all-zero, and broadcast addresses are omitted.
+
+This gives network `device_tracker` integrations a MAC to match against. Whether
+the tracker is associated automatically depends on the other integration's
+support for device registry connections. Reload Noma IQ after updating to add
+the connection to existing devices; entity unique IDs remain unchanged.
+Ayla also supplies `lan_ip`, but an IP address can change or be reassigned, so it
+is not used as a device identifier. MAC addresses are kept out of diagnostics.
+
+References: [Ayla device-list response](https://content.aylanetworks.com/Archive/Build-a-Connnected-Device.pdf)
+(device-list example), [Home Assistant device registry](https://developers.home-assistant.io/docs/device_registry_index/).
+
 On setup, each device returned by the cloud is checked against the platforms:
 
 - `gdo` becomes a garage door cover.
